@@ -8,7 +8,8 @@ from speedcord.http import Route
 from os import environ as env
 from logging import getLogger, DEBUG
 from aiohttp import ClientSession
-from aiohttp.client_ws import ClientWebSocketResponse
+from aiohttp.client_ws import ClientWebSocketResponse, WSMessage, WSMsgType
+from ujson import loads
 
 ws: ClientWebSocketResponse = None
 
@@ -16,6 +17,8 @@ client = speedcord.Client(intents=512)
 basicConfig(getLogger())
 logger = getLogger("worker")
 logger.setLevel(DEBUG)
+
+handlers = {}
 
 
 async def handle_worker():
@@ -26,7 +29,23 @@ async def handle_worker():
             "t": "identify",
             "d": None
         })
+        message: WSMessage
+        async for message in ws:
+            if message.type == WSMsgType.TEXT:
+                data = message.json(loads=loads)
+                handler = handlers.get(data["t"], None)
+                if handler is None:
+                    continue
+                client.loop.create_task(handler(data["d"]))
 
+
+async def handle_dispatch_bot_info(data: dict):
+    client.token = data["token"]
+    client.name = data["name"]
+
+    logger.info(f"Started worker with name {client.name}!")
+    client.run()
+
+
+handlers["dispatch_bot_info"] = handle_dispatch_bot_info
 client.loop.create_task(handle_worker())
-client.token = env["TOKEN"]
-client.run()
