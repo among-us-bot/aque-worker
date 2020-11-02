@@ -4,7 +4,7 @@ Created by Epic at 9/5/20
 from color_format import basicConfig
 
 import speedcord
-from speedcord.http import Route
+from speedcord.http import Route, HttpClient
 from os import environ as env
 from logging import getLogger, DEBUG
 from aiohttp import ClientSession
@@ -24,7 +24,7 @@ handlers = {}
 async def handle_worker():
     global ws
     session = ClientSession()
-    async with session.ws_connect(f"ws://{env['HOST']}:6060/worker") as ws:
+    async with session.ws_connect(f"ws://{env['HOST']}:6060/workers") as ws:
         await ws.send_json({
             "t": "identify",
             "d": None
@@ -44,8 +44,10 @@ async def handle_dispatch_bot_info(data: dict):
     client.name = data["name"]
 
     logger.info(f"Started worker with name {client.name}!")
-    client.run()
+    client.http = HttpClient(client.token)
+    await client.connect()
 
 
 handlers["dispatch_bot_info"] = handle_dispatch_bot_info
-client.loop.create_task(handle_worker())
+client.loop.run_until_complete(handle_worker())
+client.loop.run_forever()
