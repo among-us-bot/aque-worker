@@ -1,1 +1,3 @@
 speedcord==0.1.85
+aiohttp~=3.6.2
+ujson~=3.0.0
