@@ -52,10 +52,11 @@ async def handle_request(data: dict):
     method = data["method"]
     path = data["route"]
     params = data["route_params"]
+    kwargs = data["kwargs"]
 
     route = Route(method, path, **params)
     logger.debug(f"{method} {path}")
-    await client.http.request(route)
+    await client.http.request(route, **kwargs)
 
 handlers["request"] = handle_request
 handlers["dispatch_bot_info"] = handle_dispatch_bot_info
