@@ -48,6 +48,16 @@ async def handle_dispatch_bot_info(data: dict):
     await client.connect()
 
 
+async def handle_request(data: dict):
+    method = data["method"]
+    path = data["route"]
+    params = data["route_params"]
+
+    route = Route(method, path, **params)
+    logger.debug(f"{method} {path}")
+    await client.http.request(route)
+
+handlers["request"] = handle_request
 handlers["dispatch_bot_info"] = handle_dispatch_bot_info
 client.loop.run_until_complete(handle_worker())
 client.loop.run_forever()
