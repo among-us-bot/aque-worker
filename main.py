@@ -24,7 +24,7 @@ handlers = {}
 async def handle_worker():
     global ws
     session = ClientSession()
-    async with session.ws_connect(f"ws://{env['HOST']}:6060/workers") as ws:
+    async with session.ws_connect(f"ws://{env['WORKER_MANAGER_HOST']}:6060/workers") as ws:
         await ws.send_json({
             "t": "identify",
             "d": None
