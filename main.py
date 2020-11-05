@@ -54,7 +54,7 @@ async def handle_request(data: dict):
     method = request_data["method"]
     path = request_data["path"]
     params = request_data["route_params"]
-    kwargs = request_data["kwargs"]
+    kwargs = params["kwargs"]
 
     route = Route(method, path, **params)
     logger.debug(f"{method} {path}")
