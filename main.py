@@ -19,6 +19,7 @@ logger = getLogger("worker")
 logger.setLevel(DEBUG)
 
 handlers = {}
+total_guilds_served = 0
 
 
 async def handle_worker():
@@ -57,6 +58,14 @@ async def handle_request(data: dict):
     route = Route(method, path, **params)
     logger.debug(f"{method} {path}")
     await client.http.request(route, **kwargs)
+
+
+@client.listen("GUILD_CREATE")
+async def on_guild_create(data, shard):
+    global total_guilds_served
+    await ws.send_json({"t": "add_guild", "d": data["id"]})
+    total_guilds_served += 1
+    logger.debug(f"New guild to serve: {data['name']}. Now serving {total_guilds_served} guilds.")
 
 
 handlers["request"] = handle_request
