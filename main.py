@@ -13,7 +13,7 @@ from ujson import loads
 
 ws: ClientWebSocketResponse = None
 
-client = speedcord.Client(intents=512)
+client = speedcord.Client(intents=1)
 basicConfig(getLogger())
 logger = getLogger("worker")
 logger.setLevel(DEBUG)
