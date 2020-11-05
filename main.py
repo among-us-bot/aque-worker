@@ -68,6 +68,13 @@ async def on_guild_create(data, shard):
     logger.debug(f"New guild to serve: {data['name']}. Now serving {total_guilds_served} guilds.")
 
 
+@client.listen("GUILD_DELETE")
+async def on_guild_delete(data, shard):
+    global total_guilds_served
+    total_guilds_served -= 1
+    await ws.send_json({"t": "remove_guild", "d": data["id"]})
+
+
 handlers["request"] = handle_request
 handlers["dispatch_bot_info"] = handle_dispatch_bot_info
 client.loop.run_until_complete(handle_worker())
