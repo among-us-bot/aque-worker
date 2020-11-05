@@ -50,7 +50,7 @@ async def handle_dispatch_bot_info(data: dict):
 
 async def handle_request(data: dict):
     method = data["method"]
-    path = data["route"]
+    path = data["path"]
     params = data["route_params"]
     kwargs = data["kwargs"]
 
