@@ -58,6 +58,7 @@ async def handle_request(data: dict):
     logger.debug(f"{method} {path}")
     await client.http.request(route, **kwargs)
 
+
 handlers["request"] = handle_request
 handlers["dispatch_bot_info"] = handle_dispatch_bot_info
 client.loop.run_until_complete(handle_worker())
