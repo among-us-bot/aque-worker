@@ -50,10 +50,11 @@ async def handle_dispatch_bot_info(data: dict):
 
 
 async def handle_request(data: dict):
-    method = data["method"]
-    path = data["path"]
-    params = data["route_params"]
-    kwargs = data["kwargs"]
+    request_data = data["data"]
+    method = request_data["method"]
+    path = request_data["path"]
+    params = request_data["route_params"]
+    kwargs = request_data["kwargs"]
 
     route = Route(method, path, **params)
     logger.debug(f"{method} {path}")
