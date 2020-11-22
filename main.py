@@ -58,7 +58,9 @@ async def handle_request(data: dict):
 
     route = Route(method, path, **params)
     logger.debug(f"{method} {path}")
-    await client.http.request(route, **kwargs)
+    r = await client.http.request(route, **kwargs)
+    if r.status < 200 or r.status >= 300:
+        logger.warning(await r.text())
 
 
 @client.listen("GUILD_CREATE")
