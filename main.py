@@ -4,12 +4,15 @@ Created by Epic at 9/5/20
 from color_format import basicConfig
 
 import speedcord
-from speedcord.http import Route, HttpClient
+from speedcord.http import Route, HttpClient, LockManager
 from os import environ as env
 from logging import getLogger, DEBUG
 from aiohttp import ClientSession
 from aiohttp.client_ws import ClientWebSocketResponse, WSMessage, WSMsgType
 from ujson import loads
+from urllib.parse import quote as uriquote
+from asyncio import Lock, sleep
+from speedcord.exceptions import NotFound, Unauthorized, Forbidden, HTTPException,
 
 ws: ClientWebSocketResponse = None
 
@@ -20,6 +23,82 @@ logger.setLevel(DEBUG)
 
 handlers = {}
 total_guilds_served = 0
+
+
+class CustomHttp(HttpClient):
+    async def request(self, route: Route, **kwargs):
+        bucket = route.bucket
+
+        for i in range(self.retry_attempts):
+            if not self.global_lock.is_set():
+                self.logger.debug("Sleeping for Global Rate Limit")
+                await self.global_lock.wait()
+
+            ratelimit_lock: Lock = self.ratelimit_locks.get(bucket, Lock(loop=self.loop))
+            await ratelimit_lock.acquire()
+            with LockManager(ratelimit_lock) as lockmanager:
+                # Merge default headers with the users headers,
+                # could probably use a if to check if is headers set?
+                # Not sure which is optimal for speed
+                kwargs["headers"] = {
+                    **self.default_headers, **kwargs.get("headers", {})
+                }
+
+                # Format the reason
+                try:
+                    reason = kwargs.pop("reason")
+                except KeyError:
+                    pass
+                else:
+                    if reason:
+                        kwargs["headers"]["X-Audit-Log-Reason"] = uriquote(
+                            reason, safe="/ ")
+                r = await self.session.request(route.method,
+                                               self.baseuri + route.path,
+                                               **kwargs)
+
+                # check if we have rate limit header information
+                remaining = r.headers.get('X-Ratelimit-Remaining')
+                if remaining == '0' and r.status != 429:
+                    # we've depleted our current bucket
+                    delta = float(r.headers.get("X-Ratelimit-Reset-After"))
+                    self.logger.debug(
+                        f"Ratelimit exceeded. Bucket: {bucket}. Retry after: "
+                        f"{delta}")
+                    lockmanager.defer()
+                    self.loop.call_later(delta, ratelimit_lock.release)
+
+                status_code = r.status
+
+                if status_code == 404:
+                    raise NotFound(r)
+                elif status_code == 401:
+                    raise Unauthorized(r)
+                elif status_code == 403:
+                    raise Forbidden(r, await r.text())
+                elif status_code == 429:
+                    if not r.headers.get("Via"):
+                        # Cloudflare banned?
+                        raise HTTPException(r, await r.text())
+
+                    data = await r.json()
+                    retry_after = data["retry_after"] / 1000
+                    is_global = data.get("global", False)
+                    if is_global:
+                        await ws.send_json({"t": "ratelimit", "d": "global"})
+                        self.logger.warning(
+                            f"Global ratelimit hit! Retrying in "
+                            f"{retry_after}s")
+                    else:
+                        await ws.send_json({"t": "ratelimit", "d": bucket})
+                        self.logger.warning(
+                            f"A ratelimit was hit (429)! Bucket: {bucket}. "
+                            f"Retrying in {retry_after}s")
+
+                    await sleep(retry_after)
+                    continue
+
+                return r
 
 
 async def handle_worker():
@@ -45,7 +124,7 @@ async def handle_dispatch_bot_info(data: dict):
     client.name = data["name"]
 
     logger.info(f"Started worker with name {client.name}!")
-    client.http = HttpClient(client.token)
+    client.http = CustomHttp(client.token)
     await client.connect()
 
 
