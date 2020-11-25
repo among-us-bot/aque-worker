@@ -12,7 +12,7 @@ from aiohttp.client_ws import ClientWebSocketResponse, WSMessage, WSMsgType
 from ujson import loads
 from urllib.parse import quote as uriquote
 from asyncio import Lock, sleep
-from speedcord.exceptions import NotFound, Unauthorized, Forbidden, HTTPException,
+from speedcord.exceptions import NotFound, Unauthorized, Forbidden, HTTPException
 
 ws: ClientWebSocketResponse = None
 
